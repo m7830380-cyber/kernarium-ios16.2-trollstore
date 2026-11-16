@@ -1,0 +1,66 @@
+name: Build iOS 16.2 TrollStore IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Publish the output as a GitHub release
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trollstore-ipa
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select current Xcode
+        shell: bash
+        run: |
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NEWEST" ]; then sudo xcode-select -s "$NEWEST/Contents/Developer"; fi
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Download upstream release IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download 1.0b9-beta -R imxieyi/Kernarium -p 'Andarium-1.0-9.ipa' -O upstream.ipa
+
+      - name: Patch for iOS 16.2 and TrollStore
+        run: bash patch.sh upstream.ipa Andarium-1.0-9-ios16.2-trollstore.ipa 16.2
+
+      - name: Verify IPA contents
+        run: |
+          test -s Andarium-1.0-9-ios16.2-trollstore.ipa
+          unzip -t Andarium-1.0-9-ios16.2-trollstore.ipa | tail -2
+          ls -lh Andarium-1.0-9-ios16.2-trollstore.ipa report.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Andarium-iOS-16.2-TrollStore
+          path: |
+            Andarium-1.0-9-ios16.2-trollstore.ipa
+            report.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Publish GitHub release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="ios16.2-trollstore-$(date -u +%Y%m%d-%H%M%S)"
+          gh release create "$tag" Andarium-1.0-9-ios16.2-trollstore.ipa report.txt \
+            --title "Andarium 1.0 b9 — iOS 16.2 TrollStore" \
+            --notes "Patched from upstream release 1.0b9-beta for iOS 16.2 compatibility and packaged with ad-hoc signatures for TrollStore. This is an experimental compatibility patch; test on-device and retain the original IPA. See report.txt for the symbol and binary patch report."
