@@ -30,7 +30,7 @@ find Payload -type f -print0 | while IFS= read -r -d '' f; do
   vtool -set-build-version ios "$MIN" 27.0 -replace -output "$f.new" "$f"
   mv "$f.new" "$f"
 done
-[ -s machos.txt ] || { echo 'No Mach-O binaries found in IPA' >&2; exit 1; }
+[ -s ../machos.txt ] || { echo 'No Mach-O binaries found in IPA' >&2; exit 1; }
 # Imports added after iOS 16.2 are weak so absent APIs do not block launch.
 python3 ../weaken.py "$APP/Andarium" \
   '_$s7SwiftUI12TupleContentVyxxQp_QPGAA07ToolbarD0AARvzAaERzlMc' \
