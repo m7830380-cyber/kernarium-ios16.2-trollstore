@@ -47,7 +47,7 @@ done
 echo "### Build SDK $(xcrun --sdk iphoneos --show-sdk-version); target iOS $MIN" >> "$R"
 python3 ../symcheck.py "$SDK" ../machos.txt >> "$R" 2>&1 || true
 # TrollStore accepts ad-hoc signatures; nested code is signed before the app.
-tac ../machos.txt | while IFS= read -r f; do
+python3 -c 'print("\\n".join(reversed(open("../machos.txt").read().splitlines())))' | while IFS= read -r f; do
   e="$f.ent.plist.tmp"
   if [ -f "$e" ]; then
     codesign -f -s - --entitlements "$e" "$f" >/dev/null 2>&1 || codesign -f -s - "$f"
